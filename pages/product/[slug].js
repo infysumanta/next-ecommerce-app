@@ -1,9 +1,6 @@
-import { useRouter } from "next/router";
-import React from "react";
-import data from "../../utils/data";
-import Image from "next/image";
+import React, { useContext } from "react";
 import NextLink from "next/link";
-import Layout from "./../../components/Layout";
+import Image from "next/image";
 import {
   Grid,
   Link,
@@ -13,25 +10,41 @@ import {
   Card,
   Button,
 } from "@material-ui/core";
-import useStyles from "./../../utils/styles";
+import Layout from "../../components/Layout";
+import useStyles from "../../utils/styles";
 import Product from "../../models/Product";
 import db from "../../utils/db";
+import axios from "axios";
+import { Store } from "../../utils/Store";
+import { useRouter } from "next/router";
 
 export default function ProductScreen(props) {
-  const classes = useStyles();
   const router = useRouter();
-  const { slug } = router.query;
+  const { state, dispatch } = useContext(Store);
   const { product } = props;
-
+  const classes = useStyles();
   if (!product) {
     return <div>Product Not Found</div>;
   }
+  const addToCartHandler = async () => {
+    const existItem = state.cart.cartItems.find((x) => x._id === product._id);
+    const quantity = existItem ? existItem.quantity + 1 : 1;
+    const { data } = await axios.get(`/api/products/${product._id}`);
+    if (data.countInStock < quantity) {
+      window.alert("Sorry. Product is out of stock");
+      return;
+    }
+    dispatch({ type: "CART_ADD_ITEM", payload: { ...product, quantity } });
+    router.push("/cart");
+  };
 
   return (
     <Layout title={product.name} description={product.description}>
       <div className={classes.section}>
         <NextLink href="/" passHref>
-          <Link>back to product</Link>
+          <Link>
+            <Typography>back to products</Typography>
+          </Link>
         </NextLink>
       </div>
       <Grid container spacing={1}>
@@ -40,9 +53,9 @@ export default function ProductScreen(props) {
             src={product.image}
             alt={product.name}
             width={640}
-            height={642}
+            height={640}
             layout="responsive"
-          />
+          ></Image>
         </Grid>
         <Grid item md={3} xs={12}>
           <List>
@@ -63,7 +76,7 @@ export default function ProductScreen(props) {
               </Typography>
             </ListItem>
             <ListItem>
-              <Typography>Description: {product.description}</Typography>
+              <Typography> Description: {product.description}</Typography>
             </ListItem>
           </List>
         </Grid>
@@ -76,7 +89,7 @@ export default function ProductScreen(props) {
                     <Typography>Price</Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography>₹{product.price}</Typography>
+                    <Typography>${product.price}</Typography>
                   </Grid>
                 </Grid>
               </ListItem>
@@ -87,14 +100,19 @@ export default function ProductScreen(props) {
                   </Grid>
                   <Grid item xs={6}>
                     <Typography>
-                      {product.countInStock > 0 ? "In Stock" : "Unavailable"}
+                      {product.countInStock > 0 ? "In stock" : "Unavailable"}
                     </Typography>
                   </Grid>
                 </Grid>
               </ListItem>
               <ListItem>
-                <Button fullWidth variant="contained" color="primary">
-                  Add To Cart
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  onClick={addToCartHandler}
+                >
+                  Add to cart
                 </Button>
               </ListItem>
             </List>
